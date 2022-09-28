@@ -1,21 +1,19 @@
 /* configs */
 
 #ifndef _NAME
-#    define _NAME livanota
+#    define _NAME       livanota
+#    define _NAME_STR   "livanota"
 #endif /* _NAME */
 #ifndef _VERS
-#    define _VERS 0.0.0
+#    define _VERS       0x0x0
+#    define _VERS_STR   "0.0.0"
 #endif /* _VERS */
 
-#define _TO_STR( text ) #text
-#define _NAME_STR #_NAME
-#define _VERS_STR #_VERS
+#define _TO_STR( text ) ( #text )
 
 /* headers */
 
-#include "unistd.h"
-#include "stdarg.h"
-
+#include "ctime"
 #include "cstdio"
 #include "cstring"
 #include "cstdlib"
@@ -60,19 +58,19 @@ struct config_t
 
 /* constants */
 
-constexpr bool FALSE = false;
-constexpr bool TRUTH = true;
+constexpr auto FALSE = false;
+constexpr auto TRUTH = true;
 
-constexpr bool ZERO = 0;
-constexpr bool UNIT = 1;
+constexpr auto ZERO = 0;
+constexpr auto UNIT = 1;
 
-std::string CONFIG_PREFIX = _TO_STR( _NAME );
+std::string CONFIG_PREFIX = _NAME_STR;
 std::string CONFIG_SUFFIX = "lua";
-std::string CONFIG_PATH = _TO_STR( _NAME ) ".lua";
+std::string CONFIG_PATH = _NAME_STR ".lua";
 
-std::string TARGET_PREFIX = _TO_STR( _NAME );
+std::string TARGET_PREFIX = _NAME_STR;
 std::string TARGET_SUFFIX = "txt";
-std::string TARGET_PATH = _TO_STR( _NAME ) ".txt";
+std::string TARGET_PATH = _NAME_STR ".txt";
 
 std::string TIME_FORMAT = "y%ym%md%d-h%Hm%Ms%S";
 
@@ -94,17 +92,17 @@ inline std::string get_env( const std::string& name )
     return get_env( name.c_str() );
 }
 
-template< typename type_t >
+    template< typename type_t >
 inline const type_t& get_nodefault( const type_t& def, const type_t& arg )
 {
     return arg;
 }
-template< typename type_t, typename ... args_t >
+    template< typename type_t, typename ... args_t >
 inline const type_t& get_nodefault( const type_t& def, const type_t& arg, args_t&& ... args )
 {
     return arg == def ? get_nodefault( def, std::forward< args_t >( args )... ) : arg;
 }
-template< typename ... args_t >
+    template< typename ... args_t >
 inline const std::string& get_nodefault_string( args_t&& ... args )
 {
     std::string def;
@@ -125,11 +123,11 @@ int help( ecode_e ecode )
         default:
             return ecode;
     }
-    std::cerr << "[" _TO_STR( _NAME ) "]" << "[help]" << std::endl;
+    std::cerr << "[" _NAME_STR "]" << "[help]" << std::endl;
     {
         std::cerr << "- usage" << std::endl;
         {
-            std::cerr << "> " << _TO_STR( _NAME ) << std::endl;
+            std::cerr << "> " << _NAME_STR << std::endl;
         }
         std::cerr << "- flags" << std::endl;
         {
@@ -180,8 +178,27 @@ int main( int argc, const char** argv )
 
     config.format.time = TIME_FORMAT;
 
-    std::string command = ( config.editor.path.string() + " " + config.target.path.string() ).c_str();
+    char source_name[ L_tmpnam ];
+    std::tmpnam( source_name );
+
+    std::filesystem::path source_path( source_name );
+    source_path = std::filesystem::current_path() / source_path.filename();
+
+    std::string command = config.editor.path.string() + " " + source_path.string();
     std::system( command.c_str() );
+
+    std::fstream target_stream;
+    std::fstream source_stream;
+
+    target_stream.open( config.target.path, std::ios_base::app );
+    source_stream.open( source_path );
+
+    target_stream << source_stream.rdbuf() << std::endl;
+
+    source_stream.close();
+    target_stream.close();
+
+    std::filesystem::remove( source_path );
 
     return help( ecode_none );
 }

@@ -35,7 +35,9 @@ TLMAN:=$(patsubst $(SROOT)/%,$(TDMAN)/%,$(SLMAN))
 CMAKER?= $(shell which clang++) -c -o
 CFLAGS+= -std=c++17
 CFLAGS+= -O0 -g
-CFLAGS+= -D_NAME=$(NAME) -D_VERS=$(VERS) -D_TYPE_$(TYPE)
+CFLAGS+= -D_NAME=$(NAME) -D_NAME_STR=\"$(NAME)\"
+CLFAGS+= -D_VERS=$(VERS) -D_VERS_STR=\"$(VERS)\"
+CFLAGS+= -D_TYPE_$(TYPE)
 
 ## linker
 

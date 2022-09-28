@@ -15,7 +15,7 @@
 
 ### cli
 
-- [doin] command line interface is built-in
+- [done] command line interface is built-in
 
 ### tui
 
