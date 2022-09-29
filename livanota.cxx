@@ -10,11 +10,14 @@
 #include "algorithm"
 #include "string"
 #include "string_view"
+#include "vector"
 #include "fstream"
 #include "sstream"
 #include "iostream"
 #include "iomanip"
 #include "filesystem"
+
+#include "unistd.h"
 
 /* defines */
 
@@ -55,6 +58,8 @@ const char* name##_text[] = \
 _ACT( none ) \
 _ACT( argc ) \
 _ACT( argv ) \
+_ACT( comd ) \
+_ACT( opts ) \
 _ACT( conf ) \
 _ACT( evar ) \
 /* _FOR_ERROR */
@@ -117,6 +122,11 @@ struct
     std::tm     info;
 } time;
 
+struct
+{
+    std::vector< std::string_view > args;
+} cli;
+
 /* functions */
 
 inline error_enum help( error_enum error )
@@ -127,9 +137,9 @@ inline error_enum help( error_enum error )
     {
         std::cerr << "- usage" << std::endl;
         {
-            std::cerr << "> " << _NAME_STR << " <command>" << " [-f|--flag]..." << std::endl;
+            std::cerr << "> " << _NAME_STR << " <action>" << " [-o|--option]..." << std::endl;
         }
-        std::cerr << "- commands" << std::endl;
+        std::cerr << "- actions" << std::endl;
         {
 #           if FALSE
 #           ifdef _USE_CONFIG
@@ -140,7 +150,7 @@ inline error_enum help( error_enum error )
             std::cerr << "> edit - " << std::endl;
 #           endif
         }
-        std::cerr << "- flags" << std::endl;
+        std::cerr << "- options" << std::endl;
         {
 #           if FALSE
 #           ifdef _USE_CONFIG
@@ -238,6 +248,9 @@ int main( int argc, const char* argv[] )
     std::clog << "[" << _NAME_STR << "]" << "[args]" << ")" << std::endl;
     std::clog << std::endl;
 
+    if ( argc < 2 ) { return help( error_argc ); }
+    const std::string_view action = argv[ 1 ];
+
     // config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), std::format( "{}/{}", get_env( "XDG_CONFIG_HOME" ), CONFIG_PATH ), get_env( "HOME" ), CONFIG_PATH );
     config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), get_env( "XDG_CONFIG_HOME" ) + "/" + CONFIG_PATH, get_env( "HOME" ), CONFIG_PATH );
 
@@ -247,11 +260,12 @@ int main( int argc, const char* argv[] )
 
     config.time.format = get_nodefault_string( get_env( "LIVANOTA_TIME_FORMAT" ), TIME_FORMAT );
 
-    char source_name[ L_tmpnam ];
-    std::tmpnam( source_name );
+    char source_name[ PATH_MAX ];
+    std::snprintf( source_name, PATH_MAX, "%s%s%s", _NAME_STR, "-", "XXXX" "XXXX" );
+    FILE* tempfd = reinterpret_cast< FILE* > ( ::mkstemp( source_name ) );
+    // std::fclose( tempfd );
 
-    std::filesystem::path source_path( source_name );
-    source_path = std::filesystem::current_path() / source_path.filename();
+    std::filesystem::path source_path = std::filesystem::current_path() / source_name;
 
     std::string command = config.editor.path.string() + " " + source_path.string();
     std::system( &command[0] );
