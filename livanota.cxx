@@ -124,7 +124,7 @@ struct
 
 struct
 {
-    std::vector< std::string_view > args;
+    std::vector< const std::string_view > args;
 } cli;
 
 /* functions */
@@ -141,16 +141,14 @@ inline error_enum help( error_enum error )
         }
         std::cerr << "- actions" << std::endl;
         {
-#           if FALSE
+            std::cerr << "> help [act] - display this message" << std::endl;
             std::cerr << "> make [tag]... - write new nota in a text editor" << std::endl;
             std::cerr << "> edit [tag]... - open tagged notas in a text editor" << std::endl;
             std::cerr << "> view [tag]... - open notas in text user interface" << std::endl;
             std::cerr << "> read [tag]... - output notas into stdout" << std::endl;
-#           endif
         }
         std::cerr << "- options" << std::endl;
         {
-#           if FALSE
 #           ifdef _USE_CONFIG
             std::cerr << "> [-c|--config=<config-file-path>]="
                 << "${LIVANOTA_CONFIG_PATH}" << "|" 
@@ -172,7 +170,6 @@ inline error_enum help( error_enum error )
                 << "nvim" << "|"
                 << "vim" << "|"
                 << "vi" << std::endl;
-#           endif
         }
         std::cerr << "- error" << std::endl;
         {
@@ -182,6 +179,36 @@ inline error_enum help( error_enum error )
     }
 
     return error;
+}
+
+inline std::string get_opt_value( char opt )
+{
+    for ( auto iter = cli.args.begin() + 1; iter != ( cli.args.end() - 1 ); iter++ )
+    {
+        if ( (*iter)[ 0 ] == '-' && (*iter)[ 1 ] == opt )
+        {
+            return std::string( *(++iter) );
+        }
+    }
+    return "";
+}
+inline std::vector< std::string > get_opt_array( char opt )
+{
+    std::vector< std::string > result;
+
+    for ( auto iter = cli.args.begin() + 1; iter != ( cli.args.end() - 1 ); iter++ )
+    {
+        if ( (*iter)[ 0 ] == '-' && (*iter)[ 1 ] == opt )
+        {
+            while ( ( iter == cli.args.end() || (*iter)[ 0 ] == '-' ) == FALSE )
+            {
+                result.push_back( std::string( *iter ) );
+            }
+            return result;
+        }
+    }
+
+    return result;
 }
 
 inline std::string get_env( const std::string_view& name )
@@ -285,11 +312,11 @@ error_enum read()
 error_enum init()
 {
     // config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), std::format( "{}/{}", get_env( "XDG_CONFIG_HOME" ), CONFIG_PATH ), get_env( "HOME" ), CONFIG_PATH );
-    config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), get_env( "XDG_CONFIG_HOME" ) + "/" + CONFIG_PATH, get_env( "HOME" ), CONFIG_PATH );
+    config.path = get_nodefault_string( get_opt_value( 'c' ), get_env( "LIVANOTA_CONFIG_PATH" ), get_env( "XDG_CONFIG_HOME" ) + "/" + CONFIG_PATH, get_env( "HOME" ), CONFIG_PATH );
 
-    config.target.path = get_nodefault_string( get_env( "LIVANOTA_TARGET_PATH" ), get_env( "XDG_DATA_HOME" ) + "/" + TARGET_PATH, get_env( "HOME" ) + TARGET_PATH, TARGET_PATH );
+    config.target.path = get_nodefault_string( get_opt_value( 'f' ), get_env( "LIVANOTA_TARGET_PATH" ), get_env( "XDG_DATA_HOME" ) + "/" + TARGET_PATH, get_env( "HOME" ) + TARGET_PATH, TARGET_PATH );
 
-    config.editor.path = get_nodefault_string( get_env( "LIVANOTA_EDITOR_PATH" ), get_env( "EDITOR" ), std::string( "nvim" ) );
+    config.editor.path = get_nodefault_string( get_opt_value( 'e' ), get_env( "LIVANOTA_EDITOR_PATH" ), get_env( "EDITOR" ), std::string( "nvim" ) );
 
     config.time.format = get_nodefault_string( get_env( "LIVANOTA_TIME_FORMAT" ), TIME_FORMAT );
 
@@ -302,6 +329,10 @@ error_enum work()
     if ( action[ 0 ] == '-' )
     {
         return help( error_argv );
+    }
+    else if ( action == "help" )
+    {
+        help( error_none );
     }
     else if ( action == "make" )
     {
@@ -329,7 +360,7 @@ error_enum work()
 
 int main( int argc, const char* argv[] )
 {
-    cli.args = std::vector< std::string_view >( argv, argv + argc );
+    cli.args = std::vector< const std::string_view >( argv, argv + argc );
     if ( cli.args.size() > 1 )
     {
         std::clog << std::endl;
