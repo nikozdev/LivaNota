@@ -1,7 +1,7 @@
 # basic
 
 NAME:=livanota
-VERS:=0x1x1
+VERS:=0x1x2
 TYPE:=RUN
 
 # files
