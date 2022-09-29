@@ -232,8 +232,11 @@ inline std::ostream& append_header( std::ostream& stream, bool top )
 
 int main( int argc, const char* argv[] )
 {
-    if ( argc > 1) { return help( error_argc ); }
-    // std::copy( argv, argv + argc, std::ostream_iterator< char* >( std::cout, "\n" ) );
+    std::clog << std::endl;
+    std::clog << "(" << "[" << _NAME_STR << "]" << "[args]" << std::endl;
+    std::copy( argv, argv + argc, std::ostream_iterator< const char* >( std::clog, "\n" ) );
+    std::clog << "[" << _NAME_STR << "]" << "[args]" << ")" << std::endl;
+    std::clog << std::endl;
 
     // config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), std::format( "{}/{}", get_env( "XDG_CONFIG_HOME" ), CONFIG_PATH ), get_env( "HOME" ), CONFIG_PATH );
     config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), get_env( "XDG_CONFIG_HOME" ) + "/" + CONFIG_PATH, get_env( "HOME" ), CONFIG_PATH );
