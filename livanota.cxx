@@ -1,16 +1,5 @@
 /* configs */
 
-#ifndef _NAME
-#    define _NAME       livanota
-#    define _NAME_STR   "livanota"
-#endif /* _NAME */
-#ifndef _VERS
-#    define _VERS       0x0x0
-#    define _VERS_STR   "0.0.0"
-#endif /* _VERS */
-
-#define _TO_STR( text ) ( #text )
-
 /* headers */
 
 #include "ctime"
@@ -18,31 +7,95 @@
 #include "cstring"
 #include "cstdlib"
 
+#include "algorithm"
 #include "string"
+#include "string_view"
 #include "fstream"
+#include "sstream"
 #include "iostream"
+#include "iomanip"
 #include "filesystem"
 
 /* defines */
 
-#   define NS_OPEN namespace _NAME {
-#   define NS_SHUT }
+#ifndef _NAME
+#    define _NAME       livanota
+#    define _NAME_STR   "livanota"
+#endif /* _NAME */
+#ifndef _VERS
+#    define _VERS       0x0x0
+#    define _VERS_STR   "0x0x0"
+#endif /* _VERS */
 
-NS_OPEN
+#define _NAMESPACE_START namespace _NAME {
+#define _NAMESPACE_CLOSE }
+
+_NAMESPACE_START
 
 /* typedefs */
 
-enum ecode_e: int
-{
-    ecode_none = 0x0,
+#define _ENUM_DEF( name, _FOR ) \
+    \
+enum name##_enum: int \
+{ \
+    _FOR( _ACT_ENUM ) \
+}; \
+/*
+   const char** name##_text = \
+   { \
+   _FOR( _ACT_TEXT ) \
+   }; \
+   */
+/* ENUM_DEF */
 
-    ecode_argc = 0x1,
-    ecode_argv = 0x2,
+#define _FOR_ERROR( _ACT ) \
+    \
+_ACT( none ) \
+_ACT( argc ) \
+_ACT( argv ) \
+_ACT( conf ) \
+_ACT( evar ) \
+_ACT( last ) \
+/* _FOR */
+#define _ACT_ENUM( name ) error_##name,
+#define _ACT_TEXT( name ) [ error_##name ] = error_##name,
+_ENUM_DEF( error, _FOR_ERROR )
+#undef  _ACT_ENUM
+#undef  _ACT_TEXT
 
-    ecode_last = 0xf,
-};
+#define _FOR_TIMEZ( _ACT ) \
+        \
+    _ACT( loc ) \
+    _ACT( gmt ) \
+    _ACT( end ) \
+    /* _FOR */
+#define _ACT_ENUM( name ) timez_##name,
+#define _ACT_TEXT( name ) [ timez_##name ] = timez_##name,
+_ENUM_DEF( timez, _FOR_TIMEZ )
+#undef  _ACT_ENUM
+#undef  _ACT_TEXT
 
-struct config_t
+    /* constants */
+
+    constexpr auto FALSE = false;
+    constexpr auto TRUTH = true;
+
+    constexpr auto ZERO = 0;
+    constexpr auto UNIT = 1;
+
+    std::string CONFIG_PREFIX = _NAME_STR;
+    std::string CONFIG_SUFFIX = "lua";
+    std::string CONFIG_PATH = _NAME_STR ".lua";
+
+    std::string TARGET_PREFIX = _NAME_STR;
+    std::string TARGET_SUFFIX = "txt";
+    std::string TARGET_PATH = _NAME_STR ".txt";
+
+    std::string TIME_FORMAT = "y%ym%md%d-h%Hm%Ms%S";
+
+    /* variables */
+
+    struct
 {
     std::filesystem::path path;
     struct {
@@ -52,44 +105,67 @@ struct config_t
         std::filesystem::path path;
     } editor;
     struct {
-        std::string time;
-    } format;
-};
+        std::string format;
+        timez_enum  zone;
+    } time;
+} config;
 
-/* constants */
-
-constexpr auto FALSE = false;
-constexpr auto TRUTH = true;
-
-constexpr auto ZERO = 0;
-constexpr auto UNIT = 1;
-
-std::string CONFIG_PREFIX = _NAME_STR;
-std::string CONFIG_SUFFIX = "lua";
-std::string CONFIG_PATH = _NAME_STR ".lua";
-
-std::string TARGET_PREFIX = _NAME_STR;
-std::string TARGET_SUFFIX = "txt";
-std::string TARGET_PATH = _NAME_STR ".txt";
-
-std::string TIME_FORMAT = "y%ym%md%d-h%Hm%Ms%S";
-
-/* variables */
-
-config_t config;
+struct
+{
+    std::time_t unix;
+    std::tm     info;
+} time;
 
 /* functions */
 
-inline std::string get_env( const char* name )
+inline error_enum help( error_enum error )
 {
-    const char* nstr = name;
+    if ( error == error_none ) { return error; }
+
+    std::cerr << "[" _NAME_STR "]" << "[help]" << std::endl;
+    {
+        std::cerr << "- usage" << std::endl;
+        {
+            std::cerr << "> " << _NAME_STR << " [-f|--flag]..." << std::endl;
+        }
+        std::cerr << "- flags" << std::endl;
+        {
+#           ifdef _USE_CONFIG
+            std::cerr << "> [-c|--config=<config-file-path>]="
+                << "${LIVANOTA_CONFIG_PATH}" << "|" 
+                << "${XDG_CONFIG_HOME}/" << CONFIG_PATH << "|"
+                << "${HOME}/" << CONFIG_PATH << "|"
+                << CONFIG_PATH << "|"
+                << std::endl;
+#           endif
+            std::cerr << "> [-f|--file=<target-file-path>]="
+                << "config.target.path" << "|" 
+                << "${LIVANOTA_TARGET_PATH}" << "|" 
+                << "${XDG_DATA_HOME}/" << TARGET_PATH << "|"
+                << "${HOME}/" << TARGET_PATH << "|"
+                << TARGET_PATH << std::endl;
+            std::cerr << "> [-e|--editor=<editor-file-path>]="
+                << "config.editor.path" << "|"
+                << "${LIVANOTA_EDITOR_PATH}" << "|"
+                << "${EDITOR}" << "|"
+                << "nvim" << "|"
+                << "vim" << "|"
+                << "vi" << std::endl;
+        }
+        std::cerr << "- error" << std::endl;
+        std::cerr << "> code" << static_cast< int >( error ) << std::endl;
+        // std::cerr << "> text" << error_text[ error ] << std::endl;
+    }
+
+    return error;
+}
+
+inline std::string get_env( const std::string_view& name )
+{
+    const char* nstr = &name[0];
     auto estr =  std::getenv( nstr );
 
     return estr == NULL ? std::string() : std::string( estr );
-}
-inline std::string get_env( const std::string& name )
-{
-    return get_env( name.c_str() );
 }
 
     template< typename type_t >
@@ -109,74 +185,47 @@ inline const std::string& get_nodefault_string( args_t&& ... args )
     return get_nodefault( def, std::forward< args_t >( args )... );
 }
 
-int help( ecode_e ecode )
+inline error_enum update_time()
 {
-    const char* text;
-    switch( ecode )
+    time.unix = std::time( nullptr );
+
+    switch ( config.time.zone )
     {
-        case ecode_argc:
-            text = "argc";
+        case timez_loc:
+            time.info = *std::localtime( &time.unix );
             break;
-        case ecode_argv:
-            text = "argv";
+        case timez_gmt:
+            time.info = *std::gmtime( &time.unix );
             break;
         default:
-            return ecode;
+            return help( error_conf );
     }
-    std::cerr << "[" _NAME_STR "]" << "[help]" << std::endl;
-    {
-        std::cerr << "- usage" << std::endl;
-        {
-            std::cerr << "> " << _NAME_STR << std::endl;
-        }
-        std::cerr << "- flags" << std::endl;
-        {
-            std::cerr << "[-c|--config=<config-file-path>]="
-                << "${LIVANOTA_CONFIG_PATH}" << "|" 
-                << "${XDG_CONFIG_HOME}/" << CONFIG_PATH << "|"
-                << "${HOME}/" << CONFIG_PATH << "|"
-                << CONFIG_PATH << "|"
-                << std::endl;
-            std::cerr << "[-t|--target=<target-file-path>]="
-                << "config.target.path" << "|" 
-                << "${LIVANOTA_TARGET_PATH}" << "|" 
-                << "${XDG_DATA_HOME}/" << TARGET_PATH << "|"
-                << "${HOME}/" << TARGET_PATH << "|"
-                << TARGET_PATH << std::endl;
-            std::cerr << "[-e|--editor=<editor-file-path>]="
-                << "config.editor.path" << "|"
-                << "${LIVANOTA_EDITOR_PATH}" << "|"
-                << "${EDITOR}" << "|"
-                << "nvim" << "|"
-                << "vim" << "|"
-                << "vi" << std::endl;
-        }
-        std::cerr << "- ecode: " << ecode << std::endl;
-    }
-    std::cerr << std::endl;
 
-    return static_cast< int >( ecode );
+    return error_none;
 }
 
-int main( int argc, const char** argv )
+inline std::ostream& append_header( std::ostream& stream, bool top )
 {
-    switch( argc )
-    {
-        case 1:
-            break;
-        case 2:
-            break;
-        default:
-            return help( ecode_argc );
-    }
+    return stream
+        << ( top ? "([" : "[" )
+        << time.unix << "="
+        << std::put_time( &time.info, &config.time.format[0] )
+        << ( top ? "]" : "])" )
+        << std::endl << std::endl;
+}
 
+int main( int argc, const char* argv[] )
+{
+    // std::copy( argv, argv + argc, std::ostream_iterator< char* >( std::cout, "\n" ) );
+
+    // config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), std::format( "{}/{}", get_env( "XDG_CONFIG_HOME" ), CONFIG_PATH ), get_env( "HOME" ), CONFIG_PATH );
     config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), get_env( "XDG_CONFIG_HOME" ) + "/" + CONFIG_PATH, get_env( "HOME" ), CONFIG_PATH );
 
     config.target.path = get_nodefault_string( get_env( "LIVANOTA_TARGET_PATH" ), get_env( "XDG_DATA_HOME" ) + "/" + TARGET_PATH, get_env( "HOME" ) + TARGET_PATH, TARGET_PATH );
 
     config.editor.path = get_nodefault_string( get_env( "LIVANOTA_EDITOR_PATH" ), get_env( "EDITOR" ), std::string( "nvim" ) );
 
-    config.format.time = TIME_FORMAT;
+    config.time.format = get_nodefault_string( get_env( "LIVANOTA_TIME_FORMAT" ), TIME_FORMAT );
 
     char source_name[ L_tmpnam ];
     std::tmpnam( source_name );
@@ -185,25 +234,29 @@ int main( int argc, const char** argv )
     source_path = std::filesystem::current_path() / source_path.filename();
 
     std::string command = config.editor.path.string() + " " + source_path.string();
-    std::system( command.c_str() );
+    std::system( &command[0] );
+
+    update_time();
 
     std::fstream target_stream;
     std::fstream source_stream;
 
-    target_stream.open( config.target.path, std::ios_base::app );
-    source_stream.open( source_path );
+    target_stream.open( config.target.path, std::ios::app );
+    source_stream.open( source_path, std::ios::in );
 
+    append_header( target_stream, TRUTH );
     target_stream << source_stream.rdbuf() << std::endl;
+    append_header( target_stream, FALSE );
 
     source_stream.close();
     target_stream.close();
 
     std::filesystem::remove( source_path );
 
-    return help( ecode_none );
+    return help( error_none );
 }
 
-NS_SHUT
+_NAMESPACE_CLOSE
 
 #ifdef _TYPE_RUN
 int main( int argc, const char** argv )
