@@ -142,12 +142,10 @@ inline error_enum help( error_enum error )
         std::cerr << "- actions" << std::endl;
         {
 #           if FALSE
-#           ifdef _USE_CONFIG
-            std::cerr << "> view - open notas in terminal user interface" << std::endl;
-#           endif
-            std::cerr << "> read - output notas into stdout" << std::endl;
-            std::cerr << "> make - write new nota" << std::endl;
-            std::cerr << "> edit - " << std::endl;
+            std::cerr << "> make [tag]... - write new nota in a text editor" << std::endl;
+            std::cerr << "> edit [tag]... - open tagged notas in a text editor" << std::endl;
+            std::cerr << "> view [tag]... - open notas in text user interface" << std::endl;
+            std::cerr << "> read [tag]... - output notas into stdout" << std::endl;
 #           endif
         }
         std::cerr << "- options" << std::endl;
@@ -240,30 +238,12 @@ inline std::ostream& append_header( std::ostream& stream, bool top )
         << std::endl << std::endl;
 }
 
-int main( int argc, const char* argv[] )
+error_enum make()
 {
-    std::clog << std::endl;
-    std::clog << "(" << "[" << _NAME_STR << "]" << "[args]" << std::endl;
-    std::copy( argv, argv + argc, std::ostream_iterator< const char* >( std::clog, "\n" ) );
-    std::clog << "[" << _NAME_STR << "]" << "[args]" << ")" << std::endl;
-    std::clog << std::endl;
-
-    if ( argc < 2 ) { return help( error_argc ); }
-    const std::string_view action = argv[ 1 ];
-
-    // config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), std::format( "{}/{}", get_env( "XDG_CONFIG_HOME" ), CONFIG_PATH ), get_env( "HOME" ), CONFIG_PATH );
-    config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), get_env( "XDG_CONFIG_HOME" ) + "/" + CONFIG_PATH, get_env( "HOME" ), CONFIG_PATH );
-
-    config.target.path = get_nodefault_string( get_env( "LIVANOTA_TARGET_PATH" ), get_env( "XDG_DATA_HOME" ) + "/" + TARGET_PATH, get_env( "HOME" ) + TARGET_PATH, TARGET_PATH );
-
-    config.editor.path = get_nodefault_string( get_env( "LIVANOTA_EDITOR_PATH" ), get_env( "EDITOR" ), std::string( "nvim" ) );
-
-    config.time.format = get_nodefault_string( get_env( "LIVANOTA_TIME_FORMAT" ), TIME_FORMAT );
-
     char source_name[ PATH_MAX ];
     std::snprintf( source_name, PATH_MAX, "%s%s%s", _NAME_STR, "-", "XXXX" "XXXX" );
-    FILE* tempfd = reinterpret_cast< FILE* > ( ::mkstemp( source_name ) );
-    // std::fclose( tempfd );
+    auto tempfd = ::mkstemp( source_name );
+    ( void )tempfd;
 
     std::filesystem::path source_path = std::filesystem::current_path() / source_name;
 
@@ -286,6 +266,87 @@ int main( int argc, const char* argv[] )
     target_stream.close();
 
     std::filesystem::remove( source_path );
+
+    return help( error_none );
+}
+error_enum edit()
+{
+    return help( error_none );
+}
+error_enum view()
+{
+    return help( error_none );
+}
+error_enum read()
+{
+    return help( error_none );
+}
+
+error_enum init()
+{
+    // config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), std::format( "{}/{}", get_env( "XDG_CONFIG_HOME" ), CONFIG_PATH ), get_env( "HOME" ), CONFIG_PATH );
+    config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), get_env( "XDG_CONFIG_HOME" ) + "/" + CONFIG_PATH, get_env( "HOME" ), CONFIG_PATH );
+
+    config.target.path = get_nodefault_string( get_env( "LIVANOTA_TARGET_PATH" ), get_env( "XDG_DATA_HOME" ) + "/" + TARGET_PATH, get_env( "HOME" ) + TARGET_PATH, TARGET_PATH );
+
+    config.editor.path = get_nodefault_string( get_env( "LIVANOTA_EDITOR_PATH" ), get_env( "EDITOR" ), std::string( "nvim" ) );
+
+    config.time.format = get_nodefault_string( get_env( "LIVANOTA_TIME_FORMAT" ), TIME_FORMAT );
+
+    return error_none;
+}
+error_enum work()
+{
+    const std::string_view action = cli.args[ 1 ];
+
+    if ( action[ 0 ] == '-' )
+    {
+        return help( error_argv );
+    }
+    else if ( action == "make" )
+    {
+        make();
+    }
+    else if ( action == "edit" )
+    {
+        edit();
+    }
+    else if ( action == "view" )
+    {
+        view();
+    }
+    else if ( action == "read" )
+    {
+        read();
+    }
+    else
+    {
+        return help( error_argv );
+    }
+
+    return help( error_none );
+}
+
+int main( int argc, const char* argv[] )
+{
+    cli.args = std::vector< std::string_view >( argv, argv + argc );
+    if ( cli.args.size() > 1 )
+    {
+        std::clog << std::endl;
+        std::clog << "(" << "[" << _NAME_STR << "]" << "[args]" << std::endl;
+
+        std::copy( argv, argv + argc, std::ostream_iterator< const char* >( std::clog, "\n" ) );
+
+        std::clog << "[" << _NAME_STR << "]" << "[args]" << ")" << std::endl;
+        std::clog << std::endl;
+    }
+    else
+    {
+        return help( error_argc );
+    }
+
+    init();
+    work();
 
     return help( error_none );
 }
