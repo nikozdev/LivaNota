@@ -1,6 +1,7 @@
 # global
 
 *.DS_Store
+tmp*
 
 # output
 
