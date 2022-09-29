@@ -27,6 +27,8 @@
 #    define _VERS_STR   "0x0x0"
 #endif /* _VERS */
 
+#define _TO_STR( text ) ( #text )
+
 #define _NAMESPACE_START namespace _NAME {
 #define _NAMESPACE_CLOSE }
 
@@ -39,13 +41,13 @@ _NAMESPACE_START
 enum name##_enum: int \
 { \
     _FOR( _ACT_ENUM ) \
+    name##_last \
 }; \
-/*
-   const char** name##_text = \
-   { \
-   _FOR( _ACT_TEXT ) \
-   }; \
-   */
+const char* name##_text[] = \
+{ \
+    _FOR( _ACT_TEXT ) \
+    [ name##_last ] = "" \
+}; \
 /* ENUM_DEF */
 
 #define _FOR_ERROR( _ACT ) \
@@ -55,10 +57,9 @@ _ACT( argc ) \
 _ACT( argv ) \
 _ACT( conf ) \
 _ACT( evar ) \
-_ACT( last ) \
-/* _FOR */
+/* _FOR_ERROR */
 #define _ACT_ENUM( name ) error_##name,
-#define _ACT_TEXT( name ) [ error_##name ] = error_##name,
+#define _ACT_TEXT( name ) [ error_##name ] = _TO_STR( error_##name ),
 _ENUM_DEF( error, _FOR_ERROR )
 #undef  _ACT_ENUM
 #undef  _ACT_TEXT
@@ -67,10 +68,10 @@ _ENUM_DEF( error, _FOR_ERROR )
         \
     _ACT( loc ) \
     _ACT( gmt ) \
-    _ACT( end ) \
-    /* _FOR */
+    /* _FOR_TIMEZ */
+
 #define _ACT_ENUM( name ) timez_##name,
-#define _ACT_TEXT( name ) [ timez_##name ] = timez_##name,
+#define _ACT_TEXT( name ) [ timez_##name ] = _TO_STR( timez_##name ),
 _ENUM_DEF( timez, _FOR_TIMEZ )
 #undef  _ACT_ENUM
 #undef  _ACT_TEXT
@@ -154,7 +155,7 @@ inline error_enum help( error_enum error )
         }
         std::cerr << "- error" << std::endl;
         std::cerr << "> code" << static_cast< int >( error ) << std::endl;
-        // std::cerr << "> text" << error_text[ error ] << std::endl;
+        std::cerr << "> text" << error_text[ error ] << std::endl;
     }
 
     return error;
@@ -216,6 +217,7 @@ inline std::ostream& append_header( std::ostream& stream, bool top )
 
 int main( int argc, const char* argv[] )
 {
+    if ( argc > 1) { return help( error_argc ); }
     // std::copy( argv, argv + argc, std::ostream_iterator< char* >( std::cout, "\n" ) );
 
     // config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), std::format( "{}/{}", get_env( "XDG_CONFIG_HOME" ), CONFIG_PATH ), get_env( "HOME" ), CONFIG_PATH );
