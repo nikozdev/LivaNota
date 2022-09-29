@@ -10,11 +10,14 @@
 #include "algorithm"
 #include "string"
 #include "string_view"
+#include "vector"
 #include "fstream"
 #include "sstream"
 #include "iostream"
 #include "iomanip"
 #include "filesystem"
+
+#include "unistd.h"
 
 /* defines */
 
@@ -55,6 +58,8 @@ const char* name##_text[] = \
 _ACT( none ) \
 _ACT( argc ) \
 _ACT( argv ) \
+_ACT( comd ) \
+_ACT( opts ) \
 _ACT( conf ) \
 _ACT( evar ) \
 /* _FOR_ERROR */
@@ -117,6 +122,11 @@ struct
     std::tm     info;
 } time;
 
+struct
+{
+    std::vector< const std::string_view > args;
+} cli;
+
 /* functions */
 
 inline error_enum help( error_enum error )
@@ -127,22 +137,18 @@ inline error_enum help( error_enum error )
     {
         std::cerr << "- usage" << std::endl;
         {
-            std::cerr << "> " << _NAME_STR << " <command>" << " [-f|--flag]..." << std::endl;
+            std::cerr << "> " << _NAME_STR << " <action>" << " [-o|--option]..." << std::endl;
         }
-        std::cerr << "- commands" << std::endl;
+        std::cerr << "- actions" << std::endl;
         {
-#           if FALSE
-#           ifdef _USE_CONFIG
-            std::cerr << "> view - open notas in terminal user interface" << std::endl;
-#           endif
-            std::cerr << "> read - output notas into stdout" << std::endl;
-            std::cerr << "> make - write new nota" << std::endl;
-            std::cerr << "> edit - " << std::endl;
-#           endif
+            std::cerr << "> help [act] - display this message" << std::endl;
+            std::cerr << "> make [tag]... - write new nota in a text editor" << std::endl;
+            std::cerr << "> edit [tag]... - open tagged notas in a text editor" << std::endl;
+            std::cerr << "> view [tag]... - open notas in text user interface" << std::endl;
+            std::cerr << "> read [tag]... - output notas into stdout" << std::endl;
         }
-        std::cerr << "- flags" << std::endl;
+        std::cerr << "- options" << std::endl;
         {
-#           if FALSE
 #           ifdef _USE_CONFIG
             std::cerr << "> [-c|--config=<config-file-path>]="
                 << "${LIVANOTA_CONFIG_PATH}" << "|" 
@@ -164,7 +170,6 @@ inline error_enum help( error_enum error )
                 << "nvim" << "|"
                 << "vim" << "|"
                 << "vi" << std::endl;
-#           endif
         }
         std::cerr << "- error" << std::endl;
         {
@@ -174,6 +179,36 @@ inline error_enum help( error_enum error )
     }
 
     return error;
+}
+
+inline std::string get_opt_value( char opt )
+{
+    for ( auto iter = cli.args.begin() + 1; iter != ( cli.args.end() - 1 ); iter++ )
+    {
+        if ( (*iter)[ 0 ] == '-' && (*iter)[ 1 ] == opt )
+        {
+            return std::string( *(++iter) );
+        }
+    }
+    return "";
+}
+inline std::vector< std::string > get_opt_array( char opt )
+{
+    std::vector< std::string > result;
+
+    for ( auto iter = cli.args.begin() + 1; iter != ( cli.args.end() - 1 ); iter++ )
+    {
+        if ( (*iter)[ 0 ] == '-' && (*iter)[ 1 ] == opt )
+        {
+            while ( ( iter == cli.args.end() || (*iter)[ 0 ] == '-' ) == FALSE )
+            {
+                result.push_back( std::string( *iter ) );
+            }
+            return result;
+        }
+    }
+
+    return result;
 }
 
 inline std::string get_env( const std::string_view& name )
@@ -230,25 +265,14 @@ inline std::ostream& append_header( std::ostream& stream, bool top )
         << std::endl << std::endl;
 }
 
-int main( int argc, const char* argv[] )
+error_enum make()
 {
-    if ( argc > 1) { return help( error_argc ); }
-    // std::copy( argv, argv + argc, std::ostream_iterator< char* >( std::cout, "\n" ) );
+    char source_name[ PATH_MAX ];
+    std::snprintf( source_name, PATH_MAX, "%s%s%s", _NAME_STR, "-", "XXXX" "XXXX" );
+    auto tempfd = ::mkstemp( source_name );
+    ( void )tempfd;
 
-    // config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), std::format( "{}/{}", get_env( "XDG_CONFIG_HOME" ), CONFIG_PATH ), get_env( "HOME" ), CONFIG_PATH );
-    config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), get_env( "XDG_CONFIG_HOME" ) + "/" + CONFIG_PATH, get_env( "HOME" ), CONFIG_PATH );
-
-    config.target.path = get_nodefault_string( get_env( "LIVANOTA_TARGET_PATH" ), get_env( "XDG_DATA_HOME" ) + "/" + TARGET_PATH, get_env( "HOME" ) + TARGET_PATH, TARGET_PATH );
-
-    config.editor.path = get_nodefault_string( get_env( "LIVANOTA_EDITOR_PATH" ), get_env( "EDITOR" ), std::string( "nvim" ) );
-
-    config.time.format = get_nodefault_string( get_env( "LIVANOTA_TIME_FORMAT" ), TIME_FORMAT );
-
-    char source_name[ L_tmpnam ];
-    std::tmpnam( source_name );
-
-    std::filesystem::path source_path( source_name );
-    source_path = std::filesystem::current_path() / source_path.filename();
+    std::filesystem::path source_path = std::filesystem::current_path() / source_name;
 
     std::string command = config.editor.path.string() + " " + source_path.string();
     std::system( &command[0] );
@@ -269,6 +293,91 @@ int main( int argc, const char* argv[] )
     target_stream.close();
 
     std::filesystem::remove( source_path );
+
+    return help( error_none );
+}
+error_enum edit()
+{
+    return help( error_none );
+}
+error_enum view()
+{
+    return help( error_none );
+}
+error_enum read()
+{
+    return help( error_none );
+}
+
+error_enum init()
+{
+    // config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), std::format( "{}/{}", get_env( "XDG_CONFIG_HOME" ), CONFIG_PATH ), get_env( "HOME" ), CONFIG_PATH );
+    config.path = get_nodefault_string( get_opt_value( 'c' ), get_env( "LIVANOTA_CONFIG_PATH" ), get_env( "XDG_CONFIG_HOME" ) + "/" + CONFIG_PATH, get_env( "HOME" ), CONFIG_PATH );
+
+    config.target.path = get_nodefault_string( get_opt_value( 'f' ), get_env( "LIVANOTA_TARGET_PATH" ), get_env( "XDG_DATA_HOME" ) + "/" + TARGET_PATH, get_env( "HOME" ) + TARGET_PATH, TARGET_PATH );
+
+    config.editor.path = get_nodefault_string( get_opt_value( 'e' ), get_env( "LIVANOTA_EDITOR_PATH" ), get_env( "EDITOR" ), std::string( "nvim" ) );
+
+    config.time.format = get_nodefault_string( get_env( "LIVANOTA_TIME_FORMAT" ), TIME_FORMAT );
+
+    return error_none;
+}
+error_enum work()
+{
+    const std::string_view action = cli.args[ 1 ];
+
+    if ( action[ 0 ] == '-' )
+    {
+        return help( error_argv );
+    }
+    else if ( action == "help" )
+    {
+        help( error_none );
+    }
+    else if ( action == "make" )
+    {
+        make();
+    }
+    else if ( action == "edit" )
+    {
+        edit();
+    }
+    else if ( action == "view" )
+    {
+        view();
+    }
+    else if ( action == "read" )
+    {
+        read();
+    }
+    else
+    {
+        return help( error_argv );
+    }
+
+    return help( error_none );
+}
+
+int main( int argc, const char* argv[] )
+{
+    cli.args = std::vector< const std::string_view >( argv, argv + argc );
+    if ( cli.args.size() > 1 )
+    {
+        std::clog << std::endl;
+        std::clog << "(" << "[" << _NAME_STR << "]" << "[args]" << std::endl;
+
+        std::copy( argv, argv + argc, std::ostream_iterator< const char* >( std::clog, "\n" ) );
+
+        std::clog << "[" << _NAME_STR << "]" << "[args]" << ")" << std::endl;
+        std::clog << std::endl;
+    }
+    else
+    {
+        return help( error_argc );
+    }
+
+    init();
+    work();
 
     return help( error_none );
 }
