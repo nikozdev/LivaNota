@@ -127,10 +127,22 @@ inline error_enum help( error_enum error )
     {
         std::cerr << "- usage" << std::endl;
         {
-            std::cerr << "> " << _NAME_STR << " [-f|--flag]..." << std::endl;
+            std::cerr << "> " << _NAME_STR << " <command>" << " [-f|--flag]..." << std::endl;
+        }
+        std::cerr << "- commands" << std::endl;
+        {
+#           if FALSE
+#           ifdef _USE_CONFIG
+            std::cerr << "> view - open notas in terminal user interface" << std::endl;
+#           endif
+            std::cerr << "> read - output notas into stdout" << std::endl;
+            std::cerr << "> make - write new nota" << std::endl;
+            std::cerr << "> edit - " << std::endl;
+#           endif
         }
         std::cerr << "- flags" << std::endl;
         {
+#           if FALSE
 #           ifdef _USE_CONFIG
             std::cerr << "> [-c|--config=<config-file-path>]="
                 << "${LIVANOTA_CONFIG_PATH}" << "|" 
@@ -152,10 +164,13 @@ inline error_enum help( error_enum error )
                 << "nvim" << "|"
                 << "vim" << "|"
                 << "vi" << std::endl;
+#           endif
         }
         std::cerr << "- error" << std::endl;
-        std::cerr << "> code=" << static_cast< int >( error ) << std::endl;
-        std::cerr << "> text=" << error_text[ error ] << std::endl;
+        {
+            std::cerr << "> code=" << static_cast< int >( error ) << std::endl;
+            std::cerr << "> text=" << error_text[ error ] << std::endl;
+        }
     }
 
     return error;
