@@ -154,8 +154,8 @@ inline error_enum help( error_enum error )
                 << "vi" << std::endl;
         }
         std::cerr << "- error" << std::endl;
-        std::cerr << "> code" << static_cast< int >( error ) << std::endl;
-        std::cerr << "> text" << error_text[ error ] << std::endl;
+        std::cerr << "> code=" << static_cast< int >( error ) << std::endl;
+        std::cerr << "> text=" << error_text[ error ] << std::endl;
     }
 
     return error;
