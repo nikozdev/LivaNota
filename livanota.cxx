@@ -39,69 +39,67 @@ _NAMESPACE_START
 
 /* typedefs */
 
-#define _ENUM_DEF( name, _FOR ) \
+#define _ENUM_DEF( name, _FOR_, _ACT_ENUM_, _ACT_TEXT_ ) \
     \
 enum name##_enum: int \
 { \
-    _FOR( _ACT_ENUM ) \
-    name##_last \
+    name##_none, \
+    _FOR_( _ACT_ENUM_ ) \
+    name##_last,\
 }; \
 const char* name##_text[] = \
 { \
-    _FOR( _ACT_TEXT ) \
-    [ name##_last ] = "" \
+    [ name##_none ] = _TO_STR( name##_none ), \
+    _FOR_( _ACT_TEXT_ ) \
+    [ name##_last ] = _TO_STR( name##_last ), \
 }; \
 /* ENUM_DEF */
+#define _ACT_ENUM( ename, iname ) ename##_##iname,
+#define _ACT_TEXT( ename, iname ) [ ename##_##iname ] = _TO_STR( ename##_##iname ),
 
-#define _FOR_ERROR( _ACT ) \
+#define _FOR_ERROR( _ACT_ ) \
     \
-_ACT( none ) \
-_ACT( argc ) \
-_ACT( argv ) \
-_ACT( comd ) \
-_ACT( opts ) \
-_ACT( conf ) \
-_ACT( evar ) \
+    _ACT_( argc ) \
+    _ACT_( argv ) \
+    _ACT_( comd ) \
+    _ACT_( opts ) \
+    _ACT_( conf ) \
+    _ACT_( evar ) \
 /* _FOR_ERROR */
-#define _ACT_ENUM( name ) error_##name,
-#define _ACT_TEXT( name ) [ error_##name ] = _TO_STR( error_##name ),
-_ENUM_DEF( error, _FOR_ERROR )
-#undef  _ACT_ENUM
-#undef  _ACT_TEXT
+#define _ACT_ENUM_ERROR( name ) _ACT_ENUM( error, name )
+#define _ACT_TEXT_ERROR( name ) _ACT_TEXT( error, name )
+_ENUM_DEF( error, _FOR_ERROR, _ACT_ENUM_ERROR, _ACT_TEXT_ERROR )
 
 #define _FOR_TIMEZ( _ACT ) \
-        \
+    \
     _ACT( loc ) \
     _ACT( gmt ) \
-    /* _FOR_TIMEZ */
+/* _FOR_TIMEZ */
+#define _ACT_ENUM_TIMEZ( name ) _ACT_ENUM( timez, name )
+#define _ACT_TEXT_TIMEZ( name ) _ACT_TEXT( timez, name )
+_ENUM_DEF( timez, _FOR_TIMEZ, _ACT_ENUM_TIMEZ, _ACT_TEXT_TIMEZ )
 
-#define _ACT_ENUM( name ) timez_##name,
-#define _ACT_TEXT( name ) [ timez_##name ] = _TO_STR( timez_##name ),
-_ENUM_DEF( timez, _FOR_TIMEZ )
-#undef  _ACT_ENUM
-#undef  _ACT_TEXT
+/* constants */
 
-    /* constants */
+constexpr auto FALSE = false;
+constexpr auto TRUTH = true;
 
-    constexpr auto FALSE = false;
-    constexpr auto TRUTH = true;
+constexpr auto ZERO = 0;
+constexpr auto UNIT = 1;
 
-    constexpr auto ZERO = 0;
-    constexpr auto UNIT = 1;
+std::string CONFIG_PREFIX = _NAME_STR;
+std::string CONFIG_SUFFIX = "lua";
+std::string CONFIG_PATH = _NAME_STR ".lua";
 
-    std::string CONFIG_PREFIX = _NAME_STR;
-    std::string CONFIG_SUFFIX = "lua";
-    std::string CONFIG_PATH = _NAME_STR ".lua";
+std::string TARGET_PREFIX = _NAME_STR;
+std::string TARGET_SUFFIX = "txt";
+std::string TARGET_PATH = _NAME_STR ".txt";
 
-    std::string TARGET_PREFIX = _NAME_STR;
-    std::string TARGET_SUFFIX = "txt";
-    std::string TARGET_PATH = _NAME_STR ".txt";
+std::string TIME_FORMAT = "y%ym%md%d-h%Hm%Ms%S";
 
-    std::string TIME_FORMAT = "y%ym%md%d-h%Hm%Ms%S";
+/* variables */
 
-    /* variables */
-
-    struct
+struct
 {
     std::filesystem::path path;
     struct {
