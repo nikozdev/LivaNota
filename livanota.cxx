@@ -179,34 +179,58 @@ inline error_enum help( error_enum error )
     return error;
 }
 
-inline std::string get_opt_value( char opt )
+inline std::string get_opt( const std::string_view& opt )
 {
-    for ( auto iter = cli.args.begin() + 1; iter != ( cli.args.end() - 1 ); iter++ )
+    if ( cli.args.size() == 1 || opt.size() < 2 )
     {
-        if ( (*iter)[ 0 ] == '-' && (*iter)[ 1 ] == opt )
+        return "";
+    }
+    if ( opt[ 0 ] == '-' )
+    {
+        if ( opt[ 1 ] == '-' )
         {
-            return std::string( *(++iter) );
+            for ( auto iter = cli.args.begin() + 1; iter != ( cli.args.end() - 1 ); iter++ )
+            {
+                if ( *iter == opt )
+                {
+                    auto offset = (*iter).find( '=' );
+                    if ( offset == -1 )
+                    {
+                        return "";
+                    }
+                    std::string value( (*iter).substr( offset ) );
+                    return value;
+                }
+            }
         }
+        else
+        {
+            for ( auto iter = cli.args.begin() + 1; iter != ( cli.args.end() - 1 ); iter++ )
+            {
+                if ( *iter == opt )
+                {
+                    std::string value( *(++iter) );
+                    return value;
+                }
+            }
+        }
+    }
+    else
+    {
+        return "";
     }
     return "";
 }
-inline std::vector< std::string > get_opt_array( char opt )
+inline bool vet_opt( const std::string_view& opt )
 {
-    std::vector< std::string > result;
-
     for ( auto iter = cli.args.begin() + 1; iter != ( cli.args.end() - 1 ); iter++ )
     {
-        if ( (*iter)[ 0 ] == '-' && (*iter)[ 1 ] == opt )
+        if ( *iter == opt )
         {
-            while ( ( iter == cli.args.end() || (*iter)[ 0 ] == '-' ) == FALSE )
-            {
-                result.push_back( std::string( *iter ) );
-            }
-            return result;
+            return TRUTH;
         }
     }
-
-    return result;
+    return FALSE;
 }
 
 inline std::string get_env( const std::string_view& name )
@@ -309,12 +333,11 @@ error_enum read()
 
 error_enum init()
 {
-    // config.path = get_nodefault_string( get_env( "LIVANOTA_CONFIG_PATH" ), std::format( "{}/{}", get_env( "XDG_CONFIG_HOME" ), CONFIG_PATH ), get_env( "HOME" ), CONFIG_PATH );
-    config.path = get_nodefault_string( get_opt_value( 'c' ), get_env( "LIVANOTA_CONFIG_PATH" ), get_env( "XDG_CONFIG_HOME" ) + "/" + CONFIG_PATH, get_env( "HOME" ), CONFIG_PATH );
+    config.path = get_nodefault_string( get_opt( "-c" ), get_opt( "--config" ), get_env( "LIVANOTA_CONFIG_PATH" ), get_env( "XDG_CONFIG_HOME" ) + "/" + CONFIG_PATH, get_env( "HOME" ) + CONFIG_PATH );
 
-    config.target.path = get_nodefault_string( get_opt_value( 'f' ), get_env( "LIVANOTA_TARGET_PATH" ), get_env( "XDG_DATA_HOME" ) + "/" + TARGET_PATH, get_env( "HOME" ) + TARGET_PATH, TARGET_PATH );
+    config.target.path = get_nodefault_string( get_opt( "-f" ), get_opt( "--file" ), get_env( "LIVANOTA_TARGET_PATH" ), get_env( "XDG_DATA_HOME" ) + "/" + TARGET_PATH, get_env( "HOME" ) + TARGET_PATH, TARGET_PATH );
 
-    config.editor.path = get_nodefault_string( get_opt_value( 'e' ), get_env( "LIVANOTA_EDITOR_PATH" ), get_env( "EDITOR" ), std::string( "nvim" ) );
+    config.editor.path = get_nodefault_string( get_opt( "-e" ), get_opt( "--editor" ), get_env( "LIVANOTA_EDITOR_PATH" ), get_env( "EDITOR" ), std::string( "nvim" ) );
 
     config.time.format = get_nodefault_string( get_env( "LIVANOTA_TIME_FORMAT" ), TIME_FORMAT );
 
@@ -322,11 +345,11 @@ error_enum init()
 }
 error_enum work()
 {
-    const std::string_view action = cli.args[ 1 ];
+    const std::string_view action = get_nodefault_string( std::string( cli.args[ 1 ] ), std::string( "make" ) );
 
     if ( action[ 0 ] == '-' )
     {
-        return help( error_argv );
+        make();
     }
     else if ( action == "help" )
     {
@@ -353,31 +376,23 @@ error_enum work()
         return help( error_argv );
     }
 
-    return help( error_none );
+    return error_none;
 }
 
 int main( int argc, const char* argv[] )
 {
     cli.args = std::vector< const std::string_view >( argv, argv + argc );
-    if ( cli.args.size() > 1 )
-    {
-        std::clog << std::endl;
-        std::clog << "(" << "[" << _NAME_STR << "]" << "[args]" << std::endl;
-
-        std::copy( argv, argv + argc, std::ostream_iterator< const char* >( std::clog, "\n" ) );
-
-        std::clog << "[" << _NAME_STR << "]" << "[args]" << ")" << std::endl;
-        std::clog << std::endl;
-    }
-    else
-    {
-        return help( error_argc );
-    }
+    
+    std::clog << std::endl;
+    std::clog << "(" << "[" << _NAME_STR << "]" << "[args]" << std::endl;
+    std::copy( argv, argv + argc, std::ostream_iterator< const char* >( std::clog, "\n" ) );
+    std::clog << "[" << _NAME_STR << "]" << "[args]" << ")" << std::endl;
+    std::clog << std::endl;
 
     init();
     work();
 
-    return help( error_none );
+    return error_none;
 }
 
 _NAMESPACE_CLOSE
