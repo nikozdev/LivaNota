@@ -15,8 +15,8 @@ project(${vProjName} VERSION ${vProjVnum} DESCRIPTION ${vProjDesc})
 # lang
 
 enable_language(CXX)
-set(CXX_STANDARD 23)
-set(CXX_STANDARD_REQUIRED TRUE)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 
 # code
 
@@ -28,9 +28,17 @@ set(vCodeFile "${vCodePath}/${vProjName}.cpp")
 set(vHeadPath "${vProjPath}/code")
 set(vHeadFile "${vHeadPath}/${vProjName}.hpp")
 
+# data
+
+set(vDataPath "${vProjPath}/data")
+
+# defs
+
+set(vDefsName "d${vProjName}_")
+
 # make
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON FORCE)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "type of build" FORCE)
@@ -41,26 +49,68 @@ set(vMakePath "${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${vMakePath}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${vMakePath}")
 
+##lib
+
+set(vTlibName "t${vProjName}Lib")
+
+add_library(${vTlibName} INTERFACE)
+target_compile_definitions(${vTlibName} INTERFACE ${vDefsName}MakeTlib
+  ${vDefsName}ProjName="${vProjName}"
+  ${vDefsName}ProjVnum="${vProjVnum}"
+  ${vDefsName}ProjDesc="${vProjDesc}"
+  ${vDefsName}ProjPath="${vProjPath}"
+  ${vDefsName}DataPath="${vDataPath}"
+  ) # target_compile_definitions
+
+target_precompile_headers(${vTlibName} INTERFACE ${vHeadFile})
+
+FetchContent_Declare(fmt
+  GIT_REPOSITORY "https://github.com/fmtlib/fmt.git"
+  GIT_TAG "10.0.0"
+  OVERRIDE_FIND_PACKAGE)
+FetchContent_MakeAvailable(fmt)
+find_package(fmt 10.0.0 REQUIRED)
+target_link_libraries(${vTlibName} INTERFACE fmt::fmt)
+
 ##exe
 
 set(vTexeName "t${vProjName}Exe")
 set(vTexePath "${vMakePath}")
 set(vTexeFile ${vTexePath}/${vTexeName})
 
-add_executable(${vTexeName})
+option(oMakeTexe "build the project executable" TRUE)
+if(oMakeTexe)
 
-target_sources(${vTexeName} PRIVATE ${vCodeFile})
-target_include_directories(${vTexeName} PRIVATE ${vHeadPath})
-target_precompile_headers(${vTexeName} PRIVATE ${vHeadFile})
+  add_executable(${vTexeName})
+  target_compile_definitions(${vTexeName} PRIVATE ${vDefsName}MakeTexe)
+  target_link_libraries(${vTexeName} PRIVATE ${vTlibName})
+
+  target_sources(${vTexeName} PRIVATE ${vCodeFile})
+
+endif(oMakeTexe)
 
 # test
 
-include(CTest)
-enable_testing()
+cmake_dependent_option(oMakeTest "setup and build ctest units" TRUE oMakeTexe FALSE)
+if(oMakeTest)
 
-function(fTest vName vText)
-  add_test(${vName} COMMAND ${vTexeFile} "test" "${vName}")
-  set_tests_properties(${vName} PROPERTIES PASS_REGULAR_EXPRESSION ${vText})
-endfunction(fTest)
+  include(CTest)
+  enable_testing()
 
-fTest("Hello" "HelloWorld")
+  target_compile_definitions(${vTexeName} PRIVATE ${vDefsName}MakeTest)
+
+  function(fTest vName vText)
+    add_test(${vName} COMMAND ${vTexeFile} "test" "${vName}")
+    set_tests_properties(${vName} PROPERTIES PASS_REGULAR_EXPRESSION ${vText})
+  endfunction(fTest)
+
+  set(vTestText "")
+  list(APPEND vTestText "HelloWorld")
+  fTest("Hello" ${vTestText})
+  set(vTestText "")
+  list(APPEND vTestText "RelativePath=.")
+  list(APPEND vTestText "ProjPathFound=1")
+  list(APPEND vTestText "DataPathFound=1")
+  fTest("FileSystem" ${vTestText})
+
+endif(oMakeTest)
