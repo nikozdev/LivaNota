@@ -5,6 +5,39 @@
 //content
 namespace nLivaNota
 {
+//actions
+auto fBookSave(tBook &vBook, const tPath &vPath) -> bool
+{
+	//open
+	auto vFile = std::fstream(vPath, std::ios::out);
+	//read
+	vFile << vBook.vBookText;
+	//stop
+	vFile.close();
+	return nFileSystem::exists(vPath);
+}//fBookSave
+auto fBookLoad(tBook &vBook, const tPath &vPath) -> bool
+{
+	//open
+	auto vFile = std::fstream(vPath, std::ios::in);
+	//size
+	vFile.seekg(0, std::ios::end);
+	auto vSize = static_cast<std::size_t>(vFile.tellg());
+	vFile.seekg(0, std::ios::beg);
+	//text
+	auto &vText = vBook.vBookText;
+	vText.reserve(vSize);
+	//read
+  auto vLine = std::string();
+  vLine.reserve(vSize);
+  while(std::getline(vFile, vLine))
+  {
+    vText += vLine;
+  }
+	//stop
+	vFile.close();
+	return 1;
+}//fBookLoad
 //testing
 #if defined(dLivaNota_MakeTest)
 //-//typedef
@@ -35,13 +68,27 @@ static const tTestTab vTestTab = {
 		 );
 		 return EXIT_SUCCESS;
 	 }},
+	{"BookSave",
+	 []()
+	 {
+		 tPath vPath = dLivaNota_DataPath "/test/BookSave.livanota";
+		 tBook vBook;
+		 return fBookSave(vBook, vPath) ? EXIT_SUCCESS : EXIT_FAILURE;
+	 }},
+	{"BookLoad",
+	 []()
+	 {
+		 tPath vPath = dLivaNota_DataPath "/test/BookLoad.livanota";
+		 tBook vBook;
+		 return fBookLoad(vBook, vPath) ? EXIT_SUCCESS : EXIT_FAILURE;
+	 }},
 };
 #endif//ifd(dLivaNota_MakeTest)
 }//namespace nLivaNota
 //actions
 int main(int vArgC, char **vArgV, char **vEnvi)
 {
-  nLivaNota::nFileSystem::current_path(dLivaNota_ProjPath);
+	nLivaNota::nFileSystem::current_path(dLivaNota_ProjPath);
 #if defined(dLivaNota_MakeTest)
 	if(vArgC == 3 && std::string_view(vArgV[1]) == "test")
 	{
